@@ -1,0 +1,94 @@
+services:
+  # AI后端服务
+  aiops-backend:
+    build: ./backend
+    image: aiops-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MYSQL_DSN=mysql+aiomysql://aiops:password@mysql:3306/aiops?charset=utf8mb4
+      - REDIS_URL=redis://redis:6379/0
+      - ES_HOSTS=192.67.0.230:9200
+      - LLM_DEFAULT_MODEL=qwen3
+      - JWT_SECRET=change-this-to-a-random-secret-key
+      - DEBUG=false
+      - NET_CONFIG_SOURCE_PATH=/data/net_configs_source
+      - NET_CONFIG_WORKSPACE_PATH=/data/net_workspace
+      - NET_CONFIG_SCAN_INTERVAL=86400
+    volumes:
+      # 网络配置源目录（只读）。宿主机把每日备份 .cfg 放到 /data/net_configs_source 即可。
+      # 宿主机路径与容器内路径一致，均为 /data/net_configs_source（页面「配置源目录」默认值也是它）。
+      # Windows 开发环境：该路径映射到 Docker VM 内的 /data/net_configs_source（自动创建，可留空用页面「上传」导入）。
+      - /data/net_configs_source:/data/net_configs_source:ro
+      - net_workspace:/data/net_workspace
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/ai/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - aiops-net
+
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=aiops
+      - MYSQL_USER=aiops
+      - MYSQL_PASSWORD=password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/config/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aiops-net
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - aiops-net
+
+  # AI前端服务（v3.0新增）
+  aiops-frontend:
+    build: ./frontend
+    image: aiops-frontend:latest
+    ports:
+      - "80:80"
+    environment:
+      - VITE_API_BASE=/api
+    depends_on:
+      - aiops-backend
+    restart: unless-stopped
+    networks:
+      - aiops-net
+
+volumes:
+  mysql_data:
+  redis_data:
+  net_workspace:
+
+networks:
+  aiops-net:
+    driver: bridge

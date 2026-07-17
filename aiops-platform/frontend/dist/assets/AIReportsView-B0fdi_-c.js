@@ -1,0 +1,1 @@
+import{A as r}from"./AIChatBase-Bp6XEd4a.js";import{o as t,n as o}from"./index-wEMVRmkx.js";import"./index-C1qNvj-K.js";import"./_plugin-vue_export-helper-DlAUqK2U.js";const _={__name:"AIReportsView",setup(e){return(a,p)=>(t(),o(r,{capability:"reports"}))}};export{_ as default};

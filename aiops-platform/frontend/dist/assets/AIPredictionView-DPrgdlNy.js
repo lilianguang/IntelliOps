@@ -1,0 +1,1 @@
+import{A as t}from"./AIChatBase-Bp6XEd4a.js";import{o,n as r}from"./index-wEMVRmkx.js";import"./index-C1qNvj-K.js";import"./_plugin-vue_export-helper-DlAUqK2U.js";const m={__name:"AIPredictionView",setup(e){return(a,i)=>(o(),r(t,{capability:"prediction"}))}};export{m as default};
